@@ -29,6 +29,7 @@ public:
 signals:
     void transmitProgress(int progress);
     void transmitStatus(YmodemFileTransmit::Status status);
+    void receive_data(uint8_t *buff, uint32_t len);
 
 private slots:
     void readTimeOut();

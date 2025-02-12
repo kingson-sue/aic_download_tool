@@ -219,7 +219,11 @@ Ymodem::Code YmodemFileTransmit::callback(Status status, uint8_t *buff, uint32_t
 
 uint32_t YmodemFileTransmit::read(uint8_t *buff, uint32_t len)
 {
-    return serialPort->read((char *)buff, len);
+    uint32_t recv = 0;
+    recv = serialPort->read((char *)buff, len);
+    emit receive_data(buff, len);
+
+    return recv;
 }
 
 uint32_t YmodemFileTransmit::write(uint8_t *buff, uint32_t len)
