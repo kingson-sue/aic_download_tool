@@ -1,17 +1,12 @@
 ﻿#include "widget.h"
 #include "ui_widget.h"
-#include <QMessageBox>
-#include <QFileDialog>
-#include <QSerialPortInfo>
-#include <QDebug>
-#include <QTimer>
-#include <QSettings>
-#include "QDesktopWidget"
+#include <QProcess>
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Widget),
-    serialPort(new QSerialPort),
+    serialPort_aic(new QSerialPort),
+    serialPort_apus(new QSerialPort),
     ymodemFileTransmit(new YmodemFileTransmit),
     ymodemFileReceive(new YmodemFileReceive)
 {
@@ -22,18 +17,27 @@ Widget::Widget(QWidget *parent) :
     
     QSerialPortInfo serialPortInfo;
 
-    foreach(serialPortInfo, QSerialPortInfo::availablePorts())
-    {
+    // 查找串口号
+    foreach(serialPortInfo, QSerialPortInfo::availablePorts()) {
         ui->comPort->addItem(serialPortInfo.portName());
+        ui->comPort_apus->addItem(serialPortInfo.portName());
     }
     recoverSettings();
 
-    serialPort->setPortName("COM1");
-    serialPort->setBaudRate(115200);
-    serialPort->setDataBits(QSerialPort::Data8);
-    serialPort->setStopBits(QSerialPort::OneStop);
-    serialPort->setParity(QSerialPort::NoParity);
-    serialPort->setFlowControl(QSerialPort::NoFlowControl);
+    // 串口设置
+    serialPort_aic->setPortName("COM1");
+    serialPort_aic->setBaudRate(115200);
+    serialPort_aic->setDataBits(QSerialPort::Data8);
+    serialPort_aic->setStopBits(QSerialPort::OneStop);
+    serialPort_aic->setParity(QSerialPort::NoParity);
+    serialPort_aic->setFlowControl(QSerialPort::NoFlowControl);
+
+    serialPort_apus->setPortName("COM1");
+    serialPort_apus->setBaudRate(115200);
+    serialPort_apus->setDataBits(QSerialPort::Data8);
+    serialPort_apus->setStopBits(QSerialPort::OneStop);
+    serialPort_apus->setParity(QSerialPort::NoParity);
+    serialPort_apus->setFlowControl(QSerialPort::NoFlowControl);
 
     connect(ymodemFileTransmit, SIGNAL(transmitProgress(int)), this, SLOT(transmitProgress(int)));
     connect(ymodemFileReceive, SIGNAL(receiveProgress(int)), this, SLOT(receiveProgress(int)));
@@ -41,13 +45,16 @@ Widget::Widget(QWidget *parent) :
     connect(ymodemFileReceive, SIGNAL(receiveStatus(YmodemFileReceive::Status)), this, SLOT(receiveStatus(YmodemFileReceive::Status)));
 
     connect(ymodemFileTransmit, &YmodemFileTransmit::receive_data, this, &Widget::read_COM);
-    connect(serialPort, &QSerialPort::readyRead, this, &Widget::Log_Output);
+
+    connect(serialPort_aic, &QSerialPort::readyRead, this, &Widget::Log_Output);
+    connect(serialPort_apus, &QSerialPort::readyRead, this, &Widget::Log_Output_apus);
 }
 
 Widget::~Widget()
 {
     delete ui;
-    delete serialPort;
+    delete serialPort_aic;
+    delete serialPort_apus;
     delete ymodemFileTransmit;
     delete ymodemFileReceive;
 }
@@ -56,45 +63,41 @@ void Widget::on_comButton_clicked()
 {
     static bool button_status = false;
 
-    if(button_status == false)
-    {
-        serialPort->setPortName(ui->comPort->currentText());
-        serialPort->setBaudRate(ui->comBaudRate->currentText().toInt());
+    if (button_status == false) {
+        serialPort_aic->setPortName(ui->comPort->currentText());
+        serialPort_aic->setBaudRate(ui->comBaudRate->currentText().toInt());
 
-        if(serialPort->open(QSerialPort::ReadWrite) == true)
-        {
+        if (serialPort_aic->open(QSerialPort::ReadWrite) == true) {
             button_status = true;
 
             ui->comPort->setDisabled(true);
             ui->comBaudRate->setDisabled(true);
+            ui->RefreshButton->setDisabled(true);
             ui->comButton->setText(u8"关闭串口");
 
             ui->transmitBrowse->setEnabled(true);
             ui->receiveBrowse->setEnabled(true);
 
-            if(ui->transmitPath->text().isEmpty() != true)
-            {
+            ui->Button_OneClick_Download->setEnabled(true);
+
+            if (ui->transmitPath->text().isEmpty() != true) {
                 ui->transmitButton->setEnabled(true);
             }
 
-            if(ui->receivePath->text().isEmpty() != true)
-            {
+            if (ui->receivePath->text().isEmpty() != true) {
                 ui->receiveButton->setEnabled(true);
             }
-        }
-        else
-        {
+        } else {
             QMessageBox::warning(this, u8"串口打开失败", u8"请检查串口是否已被占用！", u8"关闭");
         }
-    }
-    else
-    {
+    } else {
         button_status = false;
 
-        serialPort->close();
+        serialPort_aic->close();
 
         ui->comPort->setEnabled(true);
         ui->comBaudRate->setEnabled(true);
+        ui->RefreshButton->setEnabled(true);
         ui->comButton->setText(u8"打开串口");
 
         ui->transmitBrowse->setDisabled(true);
@@ -102,6 +105,8 @@ void Widget::on_comButton_clicked()
 
         ui->receiveBrowse->setDisabled(true);
         ui->receiveButton->setDisabled(true);
+
+        ui->Button_OneClick_Download->setDisabled(true);
     }
 }
 
@@ -109,12 +114,9 @@ void Widget::on_transmitBrowse_clicked()
 {
     ui->transmitPath->setText(QFileDialog::getOpenFileName(this, u8"打开文件", ".", u8"任意文件 (*.*)"));
 
-    if(ui->transmitPath->text().isEmpty() != true)
-    {
+    if (ui->transmitPath->text().isEmpty() != true) {
         ui->transmitButton->setEnabled(true);
-    }
-    else
-    {
+    } else {
         ui->transmitButton->setDisabled(true);
     }
 }
@@ -123,28 +125,23 @@ void Widget::on_receiveBrowse_clicked()
 {
     ui->receivePath->setText(QFileDialog::getExistingDirectory(this, u8"选择目录", ".", QFileDialog::ShowDirsOnly));
 
-    if(ui->receivePath->text().isEmpty() != true)
-    {
+    if (ui->receivePath->text().isEmpty() != true) {
         ui->receiveButton->setEnabled(true);
-    }
-    else
-    {
+    } else {
         ui->receiveButton->setDisabled(true);
     }
 }
 
 void Widget::on_transmitButton_clicked()
 {
-    if(transmitButtonStatus == false)
-    {
-        serialPort->close();
+    if (transmitButtonStatus == false) {
+        serialPort_aic->close();
 
         ymodemFileTransmit->setFileName(ui->transmitPath->text());
         ymodemFileTransmit->setPortName(ui->comPort->currentText());
         ymodemFileTransmit->setPortBaudRate(ui->comBaudRate->currentText().toInt());
 
-        if(ymodemFileTransmit->startTransmit() == true)
-        {
+        if (ymodemFileTransmit->startTransmit() == true) {
             transmitButtonStatus = true;
 
             ui->comButton->setDisabled(true);
@@ -155,30 +152,24 @@ void Widget::on_transmitButton_clicked()
             ui->transmitBrowse->setDisabled(true);
             ui->transmitButton->setText(u8"取消");
             ui->transmitProgress->setValue(0);
-        }
-        else
-        {
+        } else {
             QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
         }
-    }
-    else
-    {
+    } else {
         ymodemFileTransmit->stopTransmit();
     }
 }
 
 void Widget::on_receiveButton_clicked()
 {
-    if(receiveButtonStatus == false)
-    {
-        serialPort->close();
+    if (receiveButtonStatus == false) {
+        serialPort_aic->close();
 
         ymodemFileReceive->setFilePath(ui->receivePath->text());
         ymodemFileReceive->setPortName(ui->comPort->currentText());
         ymodemFileReceive->setPortBaudRate(ui->comBaudRate->currentText().toInt());
 
-        if(ymodemFileReceive->startReceive() == true)
-        {
+        if (ymodemFileReceive->startReceive() == true) {
             receiveButtonStatus = true;
 
             ui->comButton->setDisabled(true);
@@ -189,14 +180,10 @@ void Widget::on_receiveButton_clicked()
             ui->receiveBrowse->setDisabled(true);
             ui->receiveButton->setText(u8"取消");
             ui->receiveProgress->setValue(0);
-        }
-        else
-        {
+        } else {
             QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
         }
-    }
-    else
-    {
+    } else {
         ymodemFileReceive->stopReceive();
     }
 }
@@ -213,8 +200,7 @@ void Widget::receiveProgress(int progress)
 
 void Widget::transmitStatus(Ymodem::Status status)
 {
-    switch(status)
-    {
+    switch(status) {
         case YmodemFileTransmit::StatusEstablish:
         {
             break;
@@ -233,7 +219,7 @@ void Widget::transmitStatus(Ymodem::Status status)
 
             ui->receiveBrowse->setEnabled(true);
 
-            if(ui->receivePath->text().isEmpty() != true)
+            if (ui->receivePath->text().isEmpty() != true)
             {
                 ui->receiveButton->setEnabled(true);
             }
@@ -254,7 +240,7 @@ void Widget::transmitStatus(Ymodem::Status status)
 
             ui->receiveBrowse->setEnabled(true);
 
-            if(ui->receivePath->text().isEmpty() != true)
+            if (ui->receivePath->text().isEmpty() != true)
             {
                 ui->receiveButton->setEnabled(true);
             }
@@ -275,7 +261,7 @@ void Widget::transmitStatus(Ymodem::Status status)
 
             ui->receiveBrowse->setEnabled(true);
 
-            if(ui->receivePath->text().isEmpty() != true)
+            if (ui->receivePath->text().isEmpty() != true)
             {
                 ui->receiveButton->setEnabled(true);
             }
@@ -296,7 +282,7 @@ void Widget::transmitStatus(Ymodem::Status status)
 
             ui->receiveBrowse->setEnabled(true);
 
-            if(ui->receivePath->text().isEmpty() != true)
+            if (ui->receivePath->text().isEmpty() != true)
             {
                 ui->receiveButton->setEnabled(true);
             }
@@ -308,13 +294,12 @@ void Widget::transmitStatus(Ymodem::Status status)
         }
     }
 
-    switch(status)
-    {
+    switch(status) {
         case YmodemFileTransmit::StatusFinish:
         case YmodemFileTransmit::StatusAbort:
         case YmodemFileTransmit::StatusTimeout:
         {
-            serialPort->open(QSerialPort::ReadWrite);
+            serialPort_aic->open(QSerialPort::ReadWrite);
             emit download_status_cb(status);
             break;
         }
@@ -323,8 +308,7 @@ void Widget::transmitStatus(Ymodem::Status status)
 
 void Widget::receiveStatus(YmodemFileReceive::Status status)
 {
-    switch(status)
-    {
+    switch(status) {
         case YmodemFileReceive::StatusEstablish:
         {
             break;
@@ -343,7 +327,7 @@ void Widget::receiveStatus(YmodemFileReceive::Status status)
 
             ui->transmitBrowse->setEnabled(true);
 
-            if(ui->transmitPath->text().isEmpty() != true)
+            if (ui->transmitPath->text().isEmpty() != true)
             {
                 ui->transmitButton->setEnabled(true);
             }
@@ -364,8 +348,7 @@ void Widget::receiveStatus(YmodemFileReceive::Status status)
 
             ui->transmitBrowse->setEnabled(true);
 
-            if(ui->transmitPath->text().isEmpty() != true)
-            {
+            if (ui->transmitPath->text().isEmpty() != true) {
                 ui->transmitButton->setEnabled(true);
             }
 
@@ -385,8 +368,7 @@ void Widget::receiveStatus(YmodemFileReceive::Status status)
 
             ui->transmitBrowse->setEnabled(true);
 
-            if(ui->transmitPath->text().isEmpty() != true)
-            {
+            if (ui->transmitPath->text().isEmpty() != true) {
                 ui->transmitButton->setEnabled(true);
             }
 
@@ -406,8 +388,7 @@ void Widget::receiveStatus(YmodemFileReceive::Status status)
 
             ui->transmitBrowse->setEnabled(true);
 
-            if(ui->transmitPath->text().isEmpty() != true)
-            {
+            if (ui->transmitPath->text().isEmpty() != true) {
                 ui->transmitButton->setEnabled(true);
             }
 
@@ -428,7 +409,11 @@ void Widget::delay_ms(int millisecondsToWait)
 
 void Widget::showLog(QByteArray log)
 {
-    ui->LogOutput->append(log);
+    if (!log.isEmpty()) {
+        ui->LogOutput->append(log);
+    } else {
+        // qDebug() << "Log is empty!";
+    }
 }
 
 void Widget::read_COM(uint8_t *buff, uint32_t len)
@@ -441,7 +426,7 @@ void Widget::read_COM(uint8_t *buff, uint32_t len)
 void Widget::Log_Output()
 {
     // 当有数据可读时，读取数据并打印出来
-    QByteArray data = serialPort->readAll();  // 读取所有可用数据
+    QByteArray data = serialPort_aic->readAll();  // 读取所有可用数据
     ui->Uart_Output->insertPlainText(data);
 
     // 始终确保文本框的光标在最后一行
@@ -457,7 +442,7 @@ void Widget::on_Button_Enter_Boot_clicked()
 
     sendBuf.clear();
     sendBuf.append("x 8000000 600000\r\n");
-    serialPort->write(sendBuf);
+    serialPort_aic->write(sendBuf);
 
     showLog("Send boot command:" + sendBuf);
 }
@@ -468,7 +453,7 @@ void Widget::on_Button_Set_Boot_clicked()
 
     sendBuf.clear();
     sendBuf.append("F 1 3 1 2 1\r\nF 3\r\n");
-    serialPort->write(sendBuf);
+    serialPort_aic->write(sendBuf);
 
     showLog("Send boot command:" + sendBuf);
 }
@@ -490,8 +475,7 @@ void Widget::download_check(QByteArray data)
 
 void Widget::download_status_check(YmodemFileTransmit::Status status)
 {
-    switch(status)
-    {
+    switch(status) {
         case YmodemFileTransmit::StatusFinish:
         case YmodemFileTransmit::StatusAbort:
         case YmodemFileTransmit::StatusTimeout:
@@ -519,10 +503,10 @@ void Widget::OneClick_Download_Handler(Widget::DOWM_STATUS status)
             break;
 
         case DOWM_BOOT_END:
-            delay_ms(500);
+            delay_ms(50);
             on_Button_Set_Boot_clicked();
-            // delay_ms(50);
-            // on_Button_Set_Boot_clicked();
+            delay_ms(100);
+            on_Button_Set_Boot_clicked();
 
             disconnect(this, &Widget::download_status_cb, this, &Widget::download_status_check);
             break;
@@ -578,8 +562,7 @@ void Widget::on_RefreshButton_clicked()
     QSerialPortInfo serialPortInfo;
 
     ui->comPort->clear();
-    foreach(serialPortInfo, QSerialPortInfo::availablePorts())
-    {
+    foreach(serialPortInfo, QSerialPortInfo::availablePorts()) {
         ui->comPort->addItem(serialPortInfo.portName());
     }
 }
@@ -600,9 +583,13 @@ void Widget::saveSettings()
     // 保存COM口相关信息
     settings.setValue(QString("comNumb"), ui->comPort->currentText());
     settings.setValue(QString("comBaudrate"), ui->comBaudRate->currentText());
+    settings.setValue(QString("comNumbApus"), ui->comPort_apus->currentText());
+    settings.setValue(QString("comBaudrateApus"), ui->comBaudRate_apus->currentText());
+    settings.setValue(QString("comFlashBaudrateApus"), ui->comboBox_flash_apus->currentText());
 
     // 保存下载文件路径
     settings.setValue(QString("binPath"), ui->transmitPath->text());
+    settings.setValue(QString("binPathApus"), ui->binPath_apus->text());
 }
 
 void Widget::recoverSettings()
@@ -617,7 +604,186 @@ void Widget::recoverSettings()
     // 设置COM口相关信息
     ui->comPort->setCurrentText(settings.value(QString("comNumb")).toString());
     ui->comBaudRate->setCurrentText(settings.value(QString("comBaudrate")).toString());
+    ui->comPort_apus->setCurrentText(settings.value(QString("comNumbApus")).toString());
+    ui->comBaudRate_apus->setCurrentText(settings.value(QString("comBaudrateApus")).toString());
+    ui->comboBox_flash_apus->setCurrentText(settings.value(QString("comFlashBaudrateApus")).toString());
 
-    // 保存下载文件路径
+    // 设置下载文件路径
     ui->transmitPath->setText(settings.value(QString("binPath")).toString());
+    ui->binPath_apus->setText(settings.value(QString("binPathApus")).toString());
+}
+
+void Widget::Log_Output_apus()
+{
+    // 当有数据可读时，读取数据并打印出来
+    QByteArray data = serialPort_apus->readAll();  // 读取所有可用数据
+    ui->Uart_Output_apus->insertPlainText(data);
+
+    // 始终确保文本框的光标在最后一行
+    QTextCursor cursor = ui->Uart_Output_apus->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    ui->Uart_Output_apus->setTextCursor(cursor);
+}
+
+void Widget::on_RefreshButton_apus_clicked()
+{
+    QSerialPortInfo serialPortInfo;
+
+    ui->comPort_apus->clear();
+    foreach(serialPortInfo, QSerialPortInfo::availablePorts()) {
+        ui->comPort_apus->addItem(serialPortInfo.portName());
+    }
+}
+
+void Widget::on_comButton_apus_clicked()
+{
+    static bool button_status = false;
+
+    if (button_status == false) {
+        serialPort_apus->setPortName(ui->comPort_apus->currentText());
+        serialPort_apus->setBaudRate(ui->comBaudRate_apus->currentText().toInt());
+
+        if (serialPort_apus->open(QSerialPort::ReadWrite) == true) {
+            button_status = true;
+
+            ui->comPort_apus->setDisabled(true);
+            ui->comBaudRate_apus->setDisabled(true);
+            ui->RefreshButton_apus->setDisabled(true);
+            ui->comButton_apus->setText(u8"关闭串口");
+
+            ui->Button_flash_apus->setEnabled(true);
+        } else {
+            QMessageBox::warning(this, u8"串口打开失败", u8"请检查串口是否已被占用！", u8"关闭");
+        }
+    } else {
+        button_status = false;
+
+        serialPort_apus->close();
+
+        ui->comPort_apus->setEnabled(true);
+        ui->comBaudRate_apus->setEnabled(true);
+        ui->RefreshButton_apus->setEnabled(true);
+        ui->comButton_apus->setText(u8"打开串口");
+
+        ui->Button_flash_apus->setDisabled(true);
+    }
+}
+
+
+void Widget::on_Button_flash_apus_clicked()
+{
+    if (ui->comPort_apus->currentText().isEmpty() || 
+        ui->comboBox_flash_apus->currentText().isEmpty() || 
+        ui->binPath_apus->text().isEmpty()) {
+        QMessageBox::warning(this, u8"配置错误", u8"请检查串口号,烧录波特率和文件路径", u8"关闭");
+        return;
+    }
+
+    if (serialPort_apus->isOpen()) {
+        serialPort_apus->close();
+        showLog("close serialPort_apus");
+    } else {
+        showLog("close serialPort_apus error");
+    }
+
+    QString command = "bootx/flash.bat";
+    QStringList args;
+    args.append(ui->comPort_apus->currentText());           // 串口号
+    args.append(ui->comboBox_flash_apus->currentText());    // 波特率
+    args.append(ui->binPath_apus->text());                  // 文件路径
+
+    apusProcess = new QProcess(this);
+    apusProcess->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(apusProcess,SIGNAL(readyRead()),this,SLOT(onReadProcessOutput()));                          //读命令行数据
+    connect(apusProcess,SIGNAL(readyReadStandardOutput()),this,SLOT(onReadProcessOutput()));            //读命令行标准数据（兼容）
+    connect(apusProcess,SIGNAL(errorOccurred(QProcess::ProcessError)),this,SLOT(onFinishProcess()));    //命令行错误处理
+    connect(apusProcess,SIGNAL(finished(int)),this,SLOT(onFinishProcess()));                            //命令行结束处理
+
+    apusProcess->start(command, args);//command是要执行的命令,args是参数
+}
+
+void Widget::on_pushButton_function_1_clicked()
+{
+    showLog("function_1_clicked");
+    // on_Button_flash_apus_clicked();
+}
+
+void Widget::onReadProcessOutput()
+{
+    /* 接收数据 */
+    QByteArray bytes = apusProcess->readAll();
+
+    /* 显示 */
+    if (!bytes.isEmpty()) {
+        ui->Uart_Output_apus->insertPlainText(bytes);
+
+        // 始终确保文本框的光标在最后一行
+        QTextCursor cursor = ui->Uart_Output_apus->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        ui->Uart_Output_apus->setTextCursor(cursor);
+    }
+    showLog(bytes);
+
+    /* 信息输出 */
+    qDebug() << bytes;
+}
+
+void Widget::onFinishProcess()
+{
+    /* 接收数据 */
+    int flag = apusProcess->exitCode();
+
+    // 判断有无错误
+    if (flag != 0) {
+        QString err = apusProcess->errorString();
+        qDebug() << "error_process():" << err;
+    } else {
+        qDebug() << "Success:finishedProcess():" << flag;
+    }
+
+    if (serialPort_apus->open(QSerialPort::ReadWrite) != true) {
+        QMessageBox::warning(this, u8"串口打开失败", u8"请检查串口是否已被占用！", u8"关闭");
+    }
+}
+
+void Widget::on_Button_Find_Previous_apus_clicked()
+{
+    QString searchTerm = ui->LineEdit_Search_apus->text();
+    if (!searchTerm.isEmpty()) {
+        QTextCursor cursor = ui->Uart_Output_apus->textCursor();
+        cursor = ui->Uart_Output_apus->document()->find(searchTerm, cursor,
+                                                   QTextDocument::FindFlags(QTextDocument::FindBackward)); //查找上一个匹配项
+
+        if (cursor.isNull()) {
+            qDebug() << "no match found!";
+        } else {
+            ui->Uart_Output_apus->setTextCursor(cursor);
+        }
+    }
+}
+
+void Widget::on_Button_Find_Next_apus_clicked()
+{
+    QString searchTerm = ui->LineEdit_Search_apus->text();
+    if (!searchTerm.isEmpty()) {
+        QTextCursor cursor = ui->Uart_Output_apus->textCursor();
+        cursor = ui->Uart_Output_apus->document()->find(searchTerm, cursor); // 查找下一个匹配项
+
+        if (cursor.isNull()) {
+            qDebug() << "no match found!";
+        } else {
+            ui->Uart_Output_apus->setTextCursor(cursor);
+        }
+    }
+}
+
+void Widget::on_Button_Clean_Uart_apus_clicked()
+{
+    ui->Uart_Output_apus->clear();
+}
+
+void Widget::on_transmitBrowse_apus_clicked()
+{
+    ui->binPath_apus->setText(QFileDialog::getOpenFileName(this, u8"打开文件", ".", u8"任意文件 (*.*)"));
 }

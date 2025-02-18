@@ -2,6 +2,15 @@
 #define WIDGET_H
 
 #include <QWidget>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QSerialPortInfo>
+#include <QDebug>
+#include <QTimer>
+#include <QSettings>
+#include "QDesktopWidget"
+#include <QProcess>
+
 #include "YmodemFileTransmit.h"
 #include "YmodemFileReceive.h"
 
@@ -40,11 +49,12 @@ private slots:
     void on_Button_Enter_Boot_clicked();
     void on_Button_Set_Boot_clicked();
     void Log_Output();
+    void Log_Output_apus();
     void read_COM(uint8_t *buff, uint32_t len);
     void download_check(QByteArray data);
     void download_status_check(YmodemFileTransmit::Status status);
 
-    // 按钮事件槽函数
+    // tab:aic
     void on_comButton_clicked();
     void on_transmitBrowse_clicked();
     void on_receiveBrowse_clicked();
@@ -57,6 +67,18 @@ private slots:
     void on_ButtonLogClean_clicked();
     void on_RefreshButton_clicked();
 
+    // tab:apus
+    void on_RefreshButton_apus_clicked();
+    void on_comButton_apus_clicked();
+    void on_Button_flash_apus_clicked();
+    void on_pushButton_function_1_clicked();
+    void onReadProcessOutput();
+    void onFinishProcess();
+    void on_Button_Find_Previous_apus_clicked();
+    void on_Button_Find_Next_apus_clicked();
+    void on_Button_Clean_Uart_apus_clicked();
+    void on_transmitBrowse_apus_clicked();
+
 private:
     void delay_ms(int millisecondsToWait);
     void OneClick_Download_Handler(Widget::DOWM_STATUS status);
@@ -64,9 +86,11 @@ private:
     void recoverSettings();
 
     Ui::Widget *ui;
-    QSerialPort *serialPort;
+    QSerialPort *serialPort_aic;
+    QSerialPort *serialPort_apus;
     YmodemFileTransmit *ymodemFileTransmit;
     YmodemFileReceive *ymodemFileReceive;
+    QProcess *apusProcess;
 
     bool transmitButtonStatus;
     bool receiveButtonStatus;
