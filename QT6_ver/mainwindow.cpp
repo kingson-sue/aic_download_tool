@@ -7,6 +7,7 @@
 #include <QtGui/QTextCursor>
 #include <QTextDocument>
 
+#define SHOW_VERSION "Version:2.0.0"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -22,6 +23,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     this->setWindowTitle("Download Tool");
     
+    //状态栏设置
+    //不显示其内控件的边框
+    // statusBar()->setStyleSheet("QStatusBar::item{border: 0px}");
+    //永久部件
+    statusBar()->addPermanentWidget(new QLabel(SHOW_VERSION));
+
     // 查找串口号
     const auto ports = QSerialPortInfo::availablePorts();
     for (const QSerialPortInfo &serialPortInfo : ports) {
@@ -851,4 +858,6 @@ void MainWindow::on_Button_mcu_cun_clicked()
 
     showLog("Send boot command:" + sendBuf);
 }
+
+
 

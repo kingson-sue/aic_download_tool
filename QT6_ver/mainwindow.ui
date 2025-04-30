@@ -840,6 +840,7 @@ background: #1D5573 ;
     </item>
    </layout>
   </widget>
+  <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <resources>
   <include location="resource.qrc"/>
