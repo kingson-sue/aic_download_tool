@@ -66,7 +66,7 @@ private slots:
     void on_receiveBrowse_clicked();
     void on_transmitButton_clicked();
     void on_receiveButton_clicked();
-    void on_Button_OneClick_Download_clicked();
+    void on_Button_semi_auto_load_clicked();
     void on_Button_Find_Previous_clicked();
     void on_Button_Find_Next_clicked();
     void on_Button_Clean_Uart_clicked();
@@ -84,6 +84,12 @@ private slots:
     void on_Button_Find_Next_apus_clicked();
     void on_Button_Clean_Uart_apus_clicked();
     void on_transmitBrowse_apus_clicked();
+
+    void on_LineEdit_send_returnPressed();
+
+    void on_Button_fully_auto_load_clicked();
+
+    void on_Button_mcu_cun_clicked();
 
 private:
     void delay_ms(int millisecondsToWait);

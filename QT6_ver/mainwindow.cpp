@@ -20,6 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
     receiveButtonStatus  = false;
 
     ui->setupUi(this);
+    this->setWindowTitle("Download Tool");
     
     // 查找串口号
     const auto ports = QSerialPortInfo::availablePorts();
@@ -83,7 +84,8 @@ void MainWindow::on_comButton_clicked()
             ui->transmitBrowse->setEnabled(true);
             ui->receiveBrowse->setEnabled(true);
 
-            ui->Button_OneClick_Download->setEnabled(true);
+            ui->Button_semi_auto_load->setEnabled(true);
+            ui->Button_fully_auto_load->setEnabled(true);
 
             if (ui->transmitPath->text().isEmpty() != true) {
                 ui->transmitButton->setEnabled(true);
@@ -111,7 +113,8 @@ void MainWindow::on_comButton_clicked()
         ui->receiveBrowse->setDisabled(true);
         ui->receiveButton->setDisabled(true);
 
-        ui->Button_OneClick_Download->setDisabled(true);
+        ui->Button_semi_auto_load->setDisabled(true);
+        ui->Button_fully_auto_load->setDisabled(true);
     }
 }
 
@@ -455,15 +458,23 @@ void MainWindow::on_Button_Enter_Boot_clicked()
 void MainWindow::on_Button_Set_Boot_clicked()
 {
     QByteArray sendBuf;
+    sendBuf.clear();
+    sendBuf.append("\r\n");
+    serialPort_aic->write(sendBuf);
 
+    delay_ms(10);
     sendBuf.clear();
     sendBuf.append("F 1 3 1 2 1\r\nF 3\r\n");
     serialPort_aic->write(sendBuf);
 
+    delay_ms(10);
+    sendBuf.clear();
+    sendBuf.append("F 3\r\n");
+    serialPort_aic->write(sendBuf);
     showLog("Send boot command:" + sendBuf);
 }
 
-void MainWindow::on_Button_OneClick_Download_clicked()
+void MainWindow::on_Button_semi_auto_load_clicked()
 {
     connect(this, &MainWindow::log_data, this, &MainWindow::download_check);
     connect(this, &MainWindow::download_status_cb, this, &MainWindow::download_status_check);
@@ -475,6 +486,8 @@ void MainWindow::download_check(QByteArray data)
 {
     if (data.contains("C")) {
         OneClick_Download_Handler(MainWindow::DOWM_LOADING);
+    } else if (data.contains("Mcu mode")) {
+        
     }
 }
 
@@ -511,7 +524,7 @@ void MainWindow::OneClick_Download_Handler(MainWindow::DOWM_STATUS status)
             delay_ms(50);
             on_Button_Set_Boot_clicked();
             delay_ms(100);
-            on_Button_Set_Boot_clicked();
+            on_Button_mcu_cun_clicked();
 
             disconnect(this, &MainWindow::download_status_cb, this, &MainWindow::download_status_check);
             break;
@@ -795,3 +808,47 @@ void MainWindow::on_transmitBrowse_apus_clicked()
 {
     ui->binPath_apus->setText(QFileDialog::getOpenFileName(this, u8"打开文件", ".", u8"任意文件 (*.*)"));
 }
+
+void MainWindow::on_LineEdit_send_returnPressed()
+{
+    QString send_text = ui->LineEdit_send->text();
+
+    QByteArray sendBuf;
+
+    sendBuf = send_text.toLocal8Bit();
+    sendBuf.append("\n");
+    serialPort_aic->write(sendBuf);
+
+    ui->LineEdit_send->clear();
+    showLog("Send:" + sendBuf);
+}
+
+
+void MainWindow::on_Button_fully_auto_load_clicked()
+{
+    // reboot mcu
+    serialPort_aic->write("reboot\n");
+
+    // enter boot mode
+    delay_ms(50);
+    serialPort_aic->write("\n");
+
+    // ready download
+    connect(this, &MainWindow::log_data, this, &MainWindow::download_check);
+    connect(this, &MainWindow::download_status_cb, this, &MainWindow::download_status_check);
+
+    OneClick_Download_Handler(DOWM_BOOT_START);
+}
+
+
+void MainWindow::on_Button_mcu_cun_clicked()
+{
+    QByteArray sendBuf;
+
+    sendBuf.clear();
+    sendBuf.append("g 8000000\r\n");
+    serialPort_aic->write(sendBuf);
+
+    showLog("Send boot command:" + sendBuf);
+}
+

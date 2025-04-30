@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/logo">
+        <file>resource/SerialPortYmodem.ico</file>
+    </qresource>
+</RCC>

@@ -6,12 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>804</width>
+    <height>592</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="resource.qrc">
+    <normaloff>:/logo/resource/SerialPortYmodem.ico</normaloff>:/logo/resource/SerialPortYmodem.ico</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -27,6 +31,18 @@
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
          <widget class="QGroupBox" name="groupBox">
+          <property name="contextMenuPolicy">
+           <enum>Qt::ContextMenuPolicy::DefaultContextMenu</enum>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QGroupBox{
+    border-width:1px;
+    border-style:solid;
+    #border-radius: 5px;
+    border-color:gray;
+    margin-top:0.5ex;
+}</string>
+          </property>
           <property name="title">
            <string>串口配置</string>
           </property>
@@ -168,6 +184,9 @@
         </item>
         <item>
          <widget class="QGroupBox" name="groupBox_4">
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
           <property name="title">
            <string>日志打印</string>
           </property>
@@ -182,21 +201,21 @@
             </widget>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_9"/>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_6">
+            <layout class="QHBoxLayout" name="horizontalLayout_9">
              <item>
-              <widget class="QPushButton" name="Button_Enter_Boot">
+              <widget class="QLabel" name="label_send">
                <property name="text">
-                <string>Enter Boot</string>
+                <string>Send: </string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="Button_Set_Boot">
+              <widget class="QLineEdit" name="LineEdit_send"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="Button_send_enter">
                <property name="text">
-                <string>Set Boot</string>
+                <string>Enter</string>
                </property>
               </widget>
              </item>
@@ -248,6 +267,9 @@
         </item>
         <item>
          <widget class="QGroupBox" name="groupBox_2">
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
           <property name="title">
            <string>文件发送</string>
           </property>
@@ -289,7 +311,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="Button_OneClick_Download">
+              <widget class="QPushButton" name="Button_semi_auto_load">
                <property name="enabled">
                 <bool>false</bool>
                </property>
@@ -300,7 +322,17 @@
                 </size>
                </property>
                <property name="text">
-                <string>一键下载</string>
+                <string>半自动下载</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="Button_fully_auto_load">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>全自动下载</string>
                </property>
               </widget>
              </item>
@@ -317,8 +349,39 @@
              </item>
              <item>
               <widget class="QProgressBar" name="transmitProgress">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="contextMenuPolicy">
+                <enum>Qt::ContextMenuPolicy::DefaultContextMenu</enum>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">QProgressBar::chunk
+{
+border-radius:11px;
+background:qlineargradient(spread:pad,x1:0,y1:0,x2:1,y2:0,stop:0 #01FAFF,stop:1  #26B4FF);
+}
+QProgressBar#progressBar
+{
+height:22px;
+text-align:center;
+font-size:14px;
+color:white;
+border-radius:11px;
+background: #1D5573 ;
+}</string>
+               </property>
                <property name="value">
                 <number>0</number>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignCenter</set>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
                </property>
               </widget>
              </item>
@@ -329,6 +392,9 @@
         </item>
         <item>
          <widget class="QGroupBox" name="groupBox_3">
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
           <property name="title">
            <string>文件接收</string>
           </property>
@@ -382,8 +448,27 @@
              </item>
              <item>
               <widget class="QProgressBar" name="receiveProgress">
+               <property name="styleSheet">
+                <string notr="true">QProgressBar::chunk
+{
+border-radius:11px;
+background:qlineargradient(spread:pad,x1:0,y1:0,x2:1,y2:0,stop:0 #01FAFF,stop:1  #26B4FF);
+}
+QProgressBar#progressBar
+{
+height:22px;
+text-align:center;
+font-size:14px;
+color:white;
+border-radius:11px;
+background: #1D5573 ;
+}</string>
+               </property>
                <property name="value">
                 <number>0</number>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignCenter</set>
                </property>
               </widget>
              </item>
@@ -704,6 +789,31 @@
             <widget class="QTextEdit" name="LogOutput"/>
            </item>
            <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_11">
+             <item>
+              <widget class="QPushButton" name="Button_Enter_Boot">
+               <property name="text">
+                <string>Enter Boot</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="Button_Set_Boot">
+               <property name="text">
+                <string>Set Boot</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="Button_mcu_cun">
+               <property name="text">
+                <string>Exit Boot and run</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
             <layout class="QHBoxLayout" name="horizontalLayout_8">
              <item>
               <widget class="QPushButton" name="pushButton_function_1">
@@ -730,18 +840,9 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>800</width>
-     <height>21</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <resources/>
+ <resources>
+  <include location="resource.qrc"/>
+ </resources>
  <connections/>
 </ui>
