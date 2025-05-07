@@ -7,7 +7,7 @@
 #include <QtGui/QTextCursor>
 #include <QTextDocument>
 
-#define SHOW_VERSION "Version:2.0.0"
+#define SHOW_VERSION "Version:2.0.1"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -28,6 +28,8 @@ MainWindow::MainWindow(QWidget *parent)
     // statusBar()->setStyleSheet("QStatusBar::item{border: 0px}");
     //永久部件
     statusBar()->addPermanentWidget(new QLabel(SHOW_VERSION));
+    ui->Uart_Output->setReadOnly(true);
+    ui->Uart_Output_apus->setReadOnly(true);
 
     // 查找串口号
     const auto ports = QSerialPortInfo::availablePorts();
@@ -442,12 +444,18 @@ void MainWindow::Log_Output()
 {
     // 当有数据可读时，读取数据并打印出来
     QByteArray data = serialPort_aic->readAll();  // 读取所有可用数据
+    
+    // 只检查是否有文本被选中
+    QTextCursor currentCursor = ui->Uart_Output->textCursor();
+    bool hasSelection = currentCursor.hasSelection();
+
+    // 移动到文本末尾
+    currentCursor.movePosition(QTextCursor::End);
+    ui->Uart_Output->setTextCursor(currentCursor);
+
+    // 插入新文本
     ui->Uart_Output->insertPlainText(data);
 
-    // 始终确保文本框的光标在最后一行
-    QTextCursor cursor = ui->Uart_Output->textCursor();
-    cursor.movePosition(QTextCursor::End);
-    ui->Uart_Output->setTextCursor(cursor);
     emit log_data(data);
 }
 
@@ -859,5 +867,16 @@ void MainWindow::on_Button_mcu_cun_clicked()
     showLog("Send boot command:" + sendBuf);
 }
 
+void MainWindow::on_LineEdit_send_apus_returnPressed()
+{
+    QString send_text = ui->LineEdit_send_apus->text();
 
+    QByteArray sendBuf;
 
+    sendBuf = send_text.toLocal8Bit();
+    sendBuf.append("\n");
+    serialPort_apus->write(sendBuf);
+
+    ui->LineEdit_send_apus->clear();
+    showLog("Send:" + sendBuf);
+}

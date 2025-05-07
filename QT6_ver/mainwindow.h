@@ -91,6 +91,8 @@ private slots:
 
     void on_Button_mcu_cun_clicked();
 
+    void on_LineEdit_send_apus_returnPressed();
+
 private:
     void delay_ms(int millisecondsToWait);
     void OneClick_Download_Handler(MainWindow::DOWM_STATUS status);

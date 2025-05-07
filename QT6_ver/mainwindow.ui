@@ -56,6 +56,14 @@
            </item>
            <item>
             <widget class="QComboBox" name="comPort">
+             <property name="font">
+              <font>
+               <hintingpreference>PreferDefaultHinting</hintingpreference>
+              </font>
+             </property>
+             <property name="layoutDirection">
+              <enum>Qt::LayoutDirection::LeftToRight</enum>
+             </property>
              <property name="maxVisibleItems">
               <number>12</number>
              </property>
@@ -211,13 +219,6 @@
              </item>
              <item>
               <widget class="QLineEdit" name="LineEdit_send"/>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Button_send_enter">
-               <property name="text">
-                <string>Enter</string>
-               </property>
-              </widget>
              </item>
             </layout>
            </item>
@@ -626,6 +627,79 @@ background: #1D5573 ;
          </widget>
         </item>
         <item>
+         <widget class="QGroupBox" name="groupBox_6">
+          <property name="title">
+           <string>日志打印</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_8">
+           <item>
+            <widget class="QTextEdit" name="Uart_Output_apus">
+             <property name="font">
+              <font>
+               <pointsize>10</pointsize>
+              </font>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_10">
+             <item>
+              <widget class="QLabel" name="label_send_apus">
+               <property name="text">
+                <string>Send: </string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="LineEdit_send_apus"/>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_12">
+             <item>
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>Find：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="LineEdit_Search_apus"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="Button_Find_Previous_apus">
+               <property name="text">
+                <string>Previous</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="Button_Find_Next_apus">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Next</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="Button_Clean_Uart_apus">
+               <property name="text">
+                <string>Clean</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
          <widget class="QGroupBox" name="groupBox_8">
           <property name="title">
            <string>烧录配置</string>
@@ -702,68 +776,6 @@ background: #1D5573 ;
               <widget class="QPushButton" name="Button_flash_apus">
                <property name="text">
                 <string>一键烧录</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_6">
-          <property name="title">
-           <string>日志打印</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_8">
-           <item>
-            <widget class="QTextEdit" name="Uart_Output_apus">
-             <property name="font">
-              <font>
-               <pointsize>10</pointsize>
-              </font>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_10"/>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_12">
-             <item>
-              <widget class="QLabel" name="label_8">
-               <property name="text">
-                <string>Find：</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="LineEdit_Search_apus"/>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Button_Find_Previous_apus">
-               <property name="text">
-                <string>Previous</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Button_Find_Next_apus">
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Next</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Button_Clean_Uart_apus">
-               <property name="text">
-                <string>Clean</string>
                </property>
               </widget>
              </item>
