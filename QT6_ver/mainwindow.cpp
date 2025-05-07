@@ -456,6 +456,10 @@ void MainWindow::Log_Output()
     // 插入新文本
     ui->Uart_Output->insertPlainText(data);
 
+    // 移动到文本末尾
+    currentCursor.movePosition(QTextCursor::End);
+    ui->Uart_Output->setTextCursor(currentCursor);
+
     emit log_data(data);
 }
 
