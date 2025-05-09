@@ -93,6 +93,8 @@ private slots:
 
     void on_LineEdit_send_apus_returnPressed();
 
+    void on_Button_cancel_flash_apus_clicked();
+
 private:
     void delay_ms(int millisecondsToWait);
     void OneClick_Download_Handler(MainWindow::DOWM_STATUS status);

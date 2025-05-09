@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Download_Tool_QT6 VERSION 0.1 LANGUAGES CXX)
+# 提取版本号常量
+file(READ "mainwindow.cpp" MAINWINDOW_CONTENT)
+string(REGEX MATCH "#define SHOW_VERSION \"Version:([0-9]+)\\.([0-9]+)\\.([0-9]+)\"" _ ${MAINWINDOW_CONTENT})
+set(VERSION_MAJOR ${CMAKE_MATCH_1})
+set(VERSION_MINOR ${CMAKE_MATCH_2})
+set(VERSION_PATCH ${CMAKE_MATCH_3})
+
+# 设置应用程序版本
+project(Download_Tool_QT6 VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH} LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -20,6 +28,7 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
+        app_icon.rc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -50,6 +59,10 @@ target_link_libraries(Download_Tool_QT6 PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(Download_Tool_QT6 PRIVATE Qt${QT_VERSION_MAJOR}::SerialPort)
 target_link_libraries(Download_Tool_QT6 PRIVATE protocol)
 
+# 设置输出文件名
+set_target_properties(Download_Tool_QT6 PROPERTIES 
+    OUTPUT_NAME "Download_Tool_QT6_V${VERSION_MAJOR}${VERSION_MINOR}${VERSION_PATCH}"
+)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

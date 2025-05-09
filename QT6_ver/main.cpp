@@ -10,6 +10,7 @@
 #include <QtCore/QDateTime>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QScreen>
+#include <QtGui/QIcon>
 
 
 // 自定义消息处理函数
@@ -56,6 +57,11 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(customMessageHandler);
 
     QApplication a(argc, argv);
+    
+    // 设置应用程序图标
+    QIcon appIcon(":/logo/resource/SerialPortYmodem.ico");
+    a.setWindowIcon(appIcon);
+    
     MainWindow w;
     w.show();
     return a.exec();

@@ -22,7 +22,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="aic">
        <attribute name="title">
@@ -724,6 +724,16 @@ background: #1D5573 ;
                </property>
               </widget>
              </item>
+             <item>
+              <widget class="QPushButton" name="Button_flash_apus">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>一键烧录</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
            <item>
@@ -773,9 +783,9 @@ background: #1D5573 ;
               </spacer>
              </item>
              <item>
-              <widget class="QPushButton" name="Button_flash_apus">
+              <widget class="QPushButton" name="Button_cancel_flash_apus">
                <property name="text">
-                <string>一键烧录</string>
+                <string>取消烧录</string>
                </property>
               </widget>
              </item>

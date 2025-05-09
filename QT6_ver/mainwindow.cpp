@@ -7,7 +7,7 @@
 #include <QtGui/QTextCursor>
 #include <QTextDocument>
 
-#define SHOW_VERSION "Version:2.0.2"
+#define SHOW_VERSION "Version:2.0.3"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -901,4 +901,67 @@ void MainWindow::on_LineEdit_send_apus_returnPressed()
 
     ui->LineEdit_send_apus->clear();
     showLog("Send:" + sendBuf);
+}
+
+void MainWindow::on_Button_cancel_flash_apus_clicked()
+{
+    // 先断开所有信号连接，防止回调触发
+    if (apusProcess) {
+        disconnect(apusProcess, &QProcess::readyRead, this, &MainWindow::onReadProcessOutput);
+        disconnect(apusProcess, &QProcess::readyReadStandardOutput, this, &MainWindow::onReadProcessOutput);
+        disconnect(apusProcess, &QProcess::errorOccurred, this, &MainWindow::onFinishProcess);
+        disconnect(apusProcess, &QProcess::finished, this, &MainWindow::onFinishProcess);
+    }
+
+    if (apusProcess && apusProcess->state() != QProcess::NotRunning) {
+        showLog("正在终止APUS烧录进程...");
+        
+        // 在Windows上终止可能的子进程
+        #ifdef Q_OS_WIN
+        QProcess killProcess;
+        QString pid = QString::number(apusProcess->processId());
+        showLog("终止进程ID: " + pid.toUtf8() + "及其子进程");
+        killProcess.start("taskkill", QStringList() << "/F" << "/T" << "/PID" << pid);
+        killProcess.waitForFinished(3000);
+        #endif
+        
+        delete apusProcess;
+        apusProcess = nullptr;
+        
+        showLog("APUS进程已终止");
+    } else {
+        showLog("没有正在运行的APUS烧录进程");
+        
+        if (apusProcess) {
+            delete apusProcess;
+            apusProcess = nullptr;
+        }
+    }
+    
+    // 无论进程状态如何，都确保串口关闭
+    if (serialPort_apus->isOpen()) {
+        serialPort_apus->clear();  // 清除缓冲区
+        serialPort_apus->close();
+        showLog("串口已关闭");
+    }
+    
+    // 等待一段时间后重新打开串口
+    delay_ms(100);
+    
+    // 尝试重新打开串口
+    serialPort_apus->setPortName(ui->comPort_apus->currentText());
+    serialPort_apus->setBaudRate(ui->comBaudRate_apus->currentText().toInt());
+    
+    // 设置短超时，避免长时间阻塞
+    serialPort_apus->setReadBufferSize(1024);
+    
+    if (!serialPort_apus->open(QSerialPort::ReadWrite)) {
+        showLog("重新打开串口失败: " + serialPort_apus->errorString().toUtf8());
+        QMessageBox::warning(this, u8"警告", u8"串口仍被占用，请手动关闭相关程序后重试", u8"确定");
+    } else {
+        showLog("串口已重新打开");
+        // QMessageBox::information(this, u8"操作成功", u8"烧录进程已终止，串口已重新打开", u8"确定");
+
+        
+    }
 }
