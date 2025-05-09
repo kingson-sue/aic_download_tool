@@ -7,7 +7,7 @@
 #include <QtGui/QTextCursor>
 #include <QTextDocument>
 
-#define SHOW_VERSION "Version:2.0.1"
+#define SHOW_VERSION "Version:2.0.2"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -468,7 +468,8 @@ void MainWindow::on_Button_Enter_Boot_clicked()
     QByteArray sendBuf;
 
     sendBuf.clear();
-    sendBuf.append("x 8000000 600000\r\n");
+    // sendBuf.append("x 8000000 400000\r\n");
+    sendBuf.append("x 8000000 300000\r\n");
     serialPort_aic->write(sendBuf);
 
     showLog("Send boot command:" + sendBuf);
@@ -615,6 +616,7 @@ void MainWindow::saveSettings()
 {
     QSettings settings(SETTINGS_NAME, QSettings::IniFormat);
     settings.setValue("Window/Size", this->size());
+    settings.setValue("Window/Position", this->pos());
 
     // 保存COM口相关信息
     settings.setValue(QString("comNumb"), ui->comPort->currentText());
@@ -640,6 +642,22 @@ void MainWindow::recoverSettings()
     QVariant windowSize(availableSize / 4 * 3);
 
     this->resize(settings.value("Window/Size", windowSize).toSize());
+    
+    // 恢复窗口位置，如果没有保存过则居中显示
+    if (settings.contains("Window/Position")) {
+        this->move(settings.value("Window/Position").toPoint());
+    } else {
+        // 没有保存过位置，居中显示
+        this->setGeometry(
+            QStyle::alignedRect(
+                Qt::LeftToRight,
+                Qt::AlignCenter,
+                this->size(),
+                QGuiApplication::primaryScreen()->availableGeometry()
+            )
+        );
+    }
+    
     // restoreState(settings.value("Window/windowState").toByteArray());
 
     // 设置COM口相关信息
