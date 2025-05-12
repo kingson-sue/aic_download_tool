@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "version.h"
 
 #include <QtCore/QProcess>
 #include <QtCore/QEventLoop>
@@ -8,8 +9,6 @@
 #include <QTextDocument>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-
-#define SHOW_VERSION "Version:2.0.4"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),

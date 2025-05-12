@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
-# 提取版本号常量
-file(READ "mainwindow.cpp" MAINWINDOW_CONTENT)
-string(REGEX MATCH "#define SHOW_VERSION \"Version:([0-9]+)\\.([0-9]+)\\.([0-9]+)\"" _ ${MAINWINDOW_CONTENT})
-set(VERSION_MAJOR ${CMAKE_MATCH_1})
-set(VERSION_MINOR ${CMAKE_MATCH_2})
-set(VERSION_PATCH ${CMAKE_MATCH_3})
+# 直接在CMakeLists.txt中定义版本号
+set(VERSION_MAJOR 2)
+set(VERSION_MINOR 0)
+set(VERSION_PATCH 5)
 
 # 设置应用程序版本
 project(Download_Tool_QT6 VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH} LANGUAGES CXX)
@@ -16,6 +14,15 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# 配置头文件以传递版本号
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/version.h"
+)
+
+# 添加包含目录
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets SerialPort)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets SerialPort)
