@@ -14,6 +14,9 @@
 #include <QtGui/QScreen>
 #include <QtCore/QProcess>
 #include <QCloseEvent>
+#include <QCheckBox>
+#include <QLineEdit>
+#include <QPushButton>
 
 #include "YmodemFileTransmit.h"
 #include "YmodemFileReceive.h"
@@ -72,6 +75,11 @@ private slots:
     void on_Button_Clean_Uart_clicked();
     void on_ButtonLogClean_clicked();
     void on_RefreshButton_clicked();
+    
+    // 新增文件路径管理功能
+    void onAddPathButtonClicked();
+    void onPathCheckBoxToggled(bool checked);
+    void onPathBrowseButtonClicked();
 
     // tab:apus
     void on_RefreshButton_apus_clicked();
@@ -100,8 +108,23 @@ private:
     void OneClick_Download_Handler(MainWindow::DOWM_STATUS status);
     void saveSettings();
     void recoverSettings();
+    
+    // 文件路径管理相关函数
+    void addPathItem(const QString &path = QString());
+    void selectPathItem(int index);
+    QString getSelectedFilePath() const;
+    void updateTransmitPath();
+    void clearAllPathItems();
+    
+    // 文件路径项组件列表
+    struct PathItem {
+        QCheckBox *checkBox;
+        QLineEdit *lineEdit;
+        QPushButton *browseButton;
+    };
+    QList<PathItem> pathItems;
 
-     Ui::MainWindow *ui;
+    Ui::MainWindow *ui;
     QSerialPort *serialPort_aic;
     QSerialPort *serialPort_apus;
     YmodemFileTransmit *ymodemFileTransmit;

@@ -6,8 +6,10 @@
 #include <QtWidgets/QTextEdit>
 #include <QtGui/QTextCursor>
 #include <QTextDocument>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 
-#define SHOW_VERSION "Version:2.0.3"
+#define SHOW_VERSION "Version:2.0.4"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -37,6 +39,22 @@ MainWindow::MainWindow(QWidget *parent)
         ui->comPort->addItem(serialPortInfo.portName());
         ui->comPort_apus->addItem(serialPortInfo.portName());
     }
+    
+    // 初始化文件路径管理
+    // 将第一个路径项的信号连接
+    connect(ui->pathCheckBox1, &QCheckBox::toggled, this, &MainWindow::onPathCheckBoxToggled);
+    connect(ui->pathBrowseButton1, &QPushButton::clicked, this, &MainWindow::onPathBrowseButtonClicked);
+    
+    // 添加到路径项列表中
+    PathItem firstItem;
+    firstItem.checkBox = ui->pathCheckBox1;
+    firstItem.lineEdit = ui->pathLineEdit1;
+    firstItem.browseButton = ui->pathBrowseButton1;
+    pathItems.append(firstItem);
+    
+    // 添加按钮信号连接
+    connect(ui->addPathButton, &QPushButton::clicked, this, &MainWindow::onAddPathButtonClicked);
+    
     recoverSettings();
 
     // 串口设置
@@ -90,13 +108,18 @@ void MainWindow::on_comButton_clicked()
             ui->RefreshButton->setDisabled(true);
             ui->comButton->setText(u8"关闭串口");
 
-            ui->transmitBrowse->setEnabled(true);
+            ui->addPathButton->setEnabled(true);
             ui->receiveBrowse->setEnabled(true);
+
+            // 启用所有路径项的浏览按钮
+            for (const PathItem &item : pathItems) {
+                item.browseButton->setEnabled(true);
+            }
 
             ui->Button_semi_auto_load->setEnabled(true);
             ui->Button_fully_auto_load->setEnabled(true);
 
-            if (ui->transmitPath->text().isEmpty() != true) {
+            if (!getSelectedFilePath().isEmpty()) {
                 ui->transmitButton->setEnabled(true);
             }
 
@@ -116,7 +139,11 @@ void MainWindow::on_comButton_clicked()
         ui->RefreshButton->setEnabled(true);
         ui->comButton->setText(u8"打开串口");
 
-        ui->transmitBrowse->setDisabled(true);
+        // 禁用所有路径项的浏览按钮
+        for (const PathItem &item : pathItems) {
+            item.browseButton->setDisabled(true);
+        }
+        ui->addPathButton->setDisabled(true);
         ui->transmitButton->setDisabled(true);
 
         ui->receiveBrowse->setDisabled(true);
@@ -127,15 +154,171 @@ void MainWindow::on_comButton_clicked()
     }
 }
 
-void MainWindow::on_transmitBrowse_clicked()
+void MainWindow::onPathBrowseButtonClicked()
 {
-    ui->transmitPath->setText(QFileDialog::getOpenFileName(this, u8"打开文件", ".", u8"任意文件 (*.*)"));
+    QObject *sender = QObject::sender();
+    
+    // 找到发送信号的按钮对应的路径项
+    for (int i = 0; i < pathItems.size(); ++i) {
+        if (pathItems[i].browseButton == sender) {
+            QString filePath = QFileDialog::getOpenFileName(this, u8"打开文件", ".", u8"任意文件 (*.*)");
+            
+            if (!filePath.isEmpty()) {
+                pathItems[i].lineEdit->setText(filePath);
+                pathItems[i].checkBox->setChecked(true);
+                
+                // 更新发送按钮状态
+                updateTransmitPath();
+            }
+            break;
+        }
+    }
+}
 
-    if (ui->transmitPath->text().isEmpty() != true) {
+void MainWindow::onPathCheckBoxToggled(bool checked)
+{
+    QObject *sender = QObject::sender();
+    
+    // 如果选中了一个复选框，取消其他复选框选中状态
+    if (checked) {
+        for (const PathItem &item : pathItems) {
+            if (item.checkBox != sender && item.checkBox->isChecked()) {
+                item.checkBox->setChecked(false);
+            }
+        }
+        
+        // 更新发送按钮状态
+        updateTransmitPath();
+    } else {
+        // 确保至少有一个选中项
+        bool anyChecked = false;
+        for (const PathItem &item : pathItems) {
+            if (item.checkBox->isChecked()) {
+                anyChecked = true;
+                break;
+            }
+        }
+        
+        if (!anyChecked && !pathItems.isEmpty()) {
+            // 如果没有选中项，选中第一个
+            QCheckBox *checkBox = qobject_cast<QCheckBox*>(sender);
+            checkBox->setChecked(true);
+        }
+    }
+}
+
+void MainWindow::onAddPathButtonClicked()
+{
+    addPathItem();
+}
+
+void MainWindow::addPathItem(const QString &path)
+{
+    // 创建新的行布局
+    QHBoxLayout *rowLayout = new QHBoxLayout();
+    
+    // 创建路径项组件
+    QCheckBox *checkBox = new QCheckBox();
+    QLineEdit *lineEdit = new QLineEdit();
+    QPushButton *browseButton = new QPushButton("...");
+    
+    lineEdit->setReadOnly(true);
+    browseButton->setEnabled(serialPort_aic->isOpen());
+    browseButton->setMinimumWidth(30);
+    browseButton->setMaximumWidth(30);
+    
+    if (!path.isEmpty()) {
+        lineEdit->setText(path);
+    }
+    
+    // 添加到布局
+    rowLayout->addWidget(checkBox);
+    rowLayout->addWidget(lineEdit);
+    rowLayout->addWidget(browseButton);
+    
+    // 添加到主布局
+    ui->transmitPathLayout->addLayout(rowLayout);
+    
+    // 连接信号
+    connect(checkBox, &QCheckBox::toggled, this, &MainWindow::onPathCheckBoxToggled);
+    connect(browseButton, &QPushButton::clicked, this, &MainWindow::onPathBrowseButtonClicked);
+    
+    // 添加到路径项列表
+    PathItem item;
+    item.checkBox = checkBox;
+    item.lineEdit = lineEdit;
+    item.browseButton = browseButton;
+    pathItems.append(item);
+    
+    // 默认不选中
+    checkBox->setChecked(false);
+}
+
+QString MainWindow::getSelectedFilePath() const
+{
+    for (const PathItem &item : pathItems) {
+        if (item.checkBox->isChecked()) {
+            return item.lineEdit->text();
+        }
+    }
+    return QString();
+}
+
+void MainWindow::updateTransmitPath()
+{
+    QString selectedPath = getSelectedFilePath();
+    ui->transmitPath->setText(selectedPath);
+    
+    if (!selectedPath.isEmpty() && serialPort_aic->isOpen()) {
         ui->transmitButton->setEnabled(true);
     } else {
         ui->transmitButton->setDisabled(true);
     }
+}
+
+void MainWindow::selectPathItem(int index)
+{
+    if (index >= 0 && index < pathItems.size()) {
+        for (int i = 0; i < pathItems.size(); ++i) {
+            pathItems[i].checkBox->setChecked(i == index);
+        }
+        updateTransmitPath();
+    }
+}
+
+void MainWindow::clearAllPathItems()
+{
+    // 保留第一个路径项，删除其余路径项
+    for (int i = pathItems.size() - 1; i > 0; --i) {
+        PathItem item = pathItems.takeAt(i);
+        
+        // 删除组件和布局
+        QLayout *layout = item.checkBox->parentWidget()->layout();
+        if (layout) {
+            layout->removeWidget(item.checkBox);
+            layout->removeWidget(item.lineEdit);
+            layout->removeWidget(item.browseButton);
+            
+            delete item.checkBox;
+            delete item.lineEdit;
+            delete item.browseButton;
+            
+            // 从主布局中删除行布局
+            ui->transmitPathLayout->removeItem(layout);
+            delete layout;
+        }
+    }
+    
+    // 清空第一个路径项的内容
+    if (!pathItems.isEmpty()) {
+        pathItems[0].lineEdit->clear();
+        pathItems[0].checkBox->setChecked(true);
+    }
+}
+
+void MainWindow::on_transmitBrowse_clicked()
+{
+    // 这个函数可能不再需要，但为了兼容性保留
 }
 
 void MainWindow::on_receiveBrowse_clicked()
@@ -154,7 +337,14 @@ void MainWindow::on_transmitButton_clicked()
     if (transmitButtonStatus == false) {
         serialPort_aic->close();
 
-        ymodemFileTransmit->setFileName(ui->transmitPath->text());
+        // 获取当前选中的文件路径
+        QString selectedPath = getSelectedFilePath();
+        if (selectedPath.isEmpty()) {
+            QMessageBox::warning(this, u8"错误", u8"请选择一个文件路径！", u8"关闭");
+            return;
+        }
+        
+        ymodemFileTransmit->setFileName(selectedPath);
         ymodemFileTransmit->setPortName(ui->comPort->currentText());
         ymodemFileTransmit->setPortBaudRate(ui->comBaudRate->currentText().toInt());
 
@@ -166,7 +356,12 @@ void MainWindow::on_transmitButton_clicked()
             ui->receiveBrowse->setDisabled(true);
             ui->receiveButton->setDisabled(true);
 
-            ui->transmitBrowse->setDisabled(true);
+            // 禁用所有路径项操作
+            for (const PathItem &item : pathItems) {
+                item.checkBox->setDisabled(true);
+                item.browseButton->setDisabled(true);
+            }
+            ui->addPathButton->setDisabled(true);
             ui->transmitButton->setText(u8"取消");
             ui->transmitProgress->setValue(0);
         } else {
@@ -174,6 +369,57 @@ void MainWindow::on_transmitButton_clicked()
         }
     } else {
         ymodemFileTransmit->stopTransmit();
+    }
+}
+
+void MainWindow::transmitStatus(Ymodem::Status status)
+{
+    switch(status) {
+        case YmodemFileTransmit::StatusEstablish:
+        case YmodemFileTransmit::StatusTransmit:
+            break;
+
+        case YmodemFileTransmit::StatusFinish:
+        case YmodemFileTransmit::StatusAbort:
+        case YmodemFileTransmit::StatusTimeout:
+        default:
+        {
+            transmitButtonStatus = false;
+
+            ui->comButton->setEnabled(true);
+
+            ui->receiveBrowse->setEnabled(true);
+
+            if (ui->receivePath->text().isEmpty() != true)
+            {
+                ui->receiveButton->setEnabled(true);
+            }
+
+            // 启用所有路径项操作
+            for (const PathItem &item : pathItems) {
+                item.checkBox->setEnabled(true);
+                item.browseButton->setEnabled(true);
+            }
+            ui->addPathButton->setEnabled(true);
+            ui->transmitButton->setText(u8"发送");
+
+            if (status == YmodemFileTransmit::StatusFinish) {
+                QMessageBox::information(this, u8"成功", u8"文件发送成功！", u8"关闭");
+            } else if (status != YmodemFileTransmit::StatusAbort) {
+                QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
+            }
+        }
+    }
+
+    switch(status) {
+        case YmodemFileTransmit::StatusFinish:
+        case YmodemFileTransmit::StatusAbort:
+        case YmodemFileTransmit::StatusTimeout:
+        {
+            serialPort_aic->open(QSerialPort::ReadWrite);
+            emit download_status_cb(status);
+            break;
+        }
     }
 }
 
@@ -189,9 +435,14 @@ void MainWindow::on_receiveButton_clicked()
         if (ymodemFileReceive->startReceive() == true) {
             receiveButtonStatus = true;
 
-            ui->comButton->setDisabled(true);
+            ui->comButton->setEnabled(true);
 
-            ui->transmitBrowse->setDisabled(true);
+            // 禁用所有路径项操作
+            for (const PathItem &item : pathItems) {
+                item.checkBox->setDisabled(true);
+                item.browseButton->setDisabled(true);
+            }
+            ui->addPathButton->setDisabled(true);
             ui->transmitButton->setDisabled(true);
 
             ui->receiveBrowse->setDisabled(true);
@@ -215,195 +466,28 @@ void MainWindow::receiveProgress(int progress)
     ui->receiveProgress->setValue(progress);
 }
 
-void MainWindow::transmitStatus(Ymodem::Status status)
-{
-    switch(status) {
-        case YmodemFileTransmit::StatusEstablish:
-        {
-            break;
-        }
-
-        case YmodemFileTransmit::StatusTransmit:
-        {
-            break;
-        }
-
-        case YmodemFileTransmit::StatusFinish:
-        {
-            transmitButtonStatus = false;
-
-            ui->comButton->setEnabled(true);
-
-            ui->receiveBrowse->setEnabled(true);
-
-            if (ui->receivePath->text().isEmpty() != true)
-            {
-                ui->receiveButton->setEnabled(true);
-            }
-
-            ui->transmitBrowse->setEnabled(true);
-            ui->transmitButton->setText(u8"发送");
-
-            QMessageBox::warning(this, u8"成功", u8"文件发送成功！", u8"关闭");
-
-            break;
-        }
-
-        case YmodemFileTransmit::StatusAbort:
-        {
-            transmitButtonStatus = false;
-
-            ui->comButton->setEnabled(true);
-
-            ui->receiveBrowse->setEnabled(true);
-
-            if (ui->receivePath->text().isEmpty() != true)
-            {
-                ui->receiveButton->setEnabled(true);
-            }
-
-            ui->transmitBrowse->setEnabled(true);
-            ui->transmitButton->setText(u8"发送");
-
-            // QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
-
-            break;
-        }
-
-        case YmodemFileTransmit::StatusTimeout:
-        {
-            transmitButtonStatus = false;
-
-            ui->comButton->setEnabled(true);
-
-            ui->receiveBrowse->setEnabled(true);
-
-            if (ui->receivePath->text().isEmpty() != true)
-            {
-                ui->receiveButton->setEnabled(true);
-            }
-
-            ui->transmitBrowse->setEnabled(true);
-            ui->transmitButton->setText(u8"发送");
-
-            QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
-
-            break;
-        }
-
-        default:
-        {
-            transmitButtonStatus = false;
-
-            ui->comButton->setEnabled(true);
-
-            ui->receiveBrowse->setEnabled(true);
-
-            if (ui->receivePath->text().isEmpty() != true)
-            {
-                ui->receiveButton->setEnabled(true);
-            }
-
-            ui->transmitBrowse->setEnabled(true);
-            ui->transmitButton->setText(u8"发送");
-
-            QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
-        }
-    }
-
-    switch(status) {
-        case YmodemFileTransmit::StatusFinish:
-        case YmodemFileTransmit::StatusAbort:
-        case YmodemFileTransmit::StatusTimeout:
-        {
-            serialPort_aic->open(QSerialPort::ReadWrite);
-            emit download_status_cb(status);
-            break;
-        }
-    }
-}
-
 void MainWindow::receiveStatus(YmodemFileReceive::Status status)
 {
     switch(status) {
         case YmodemFileReceive::StatusEstablish:
-        {
-            break;
-        }
-
         case YmodemFileReceive::StatusTransmit:
-        {
             break;
-        }
 
         case YmodemFileReceive::StatusFinish:
-        {
-            receiveButtonStatus = false;
-
-            ui->comButton->setEnabled(true);
-
-            ui->transmitBrowse->setEnabled(true);
-
-            if (ui->transmitPath->text().isEmpty() != true)
-            {
-                ui->transmitButton->setEnabled(true);
-            }
-
-            ui->receiveBrowse->setEnabled(true);
-            ui->receiveButton->setText(u8"接收");
-
-            QMessageBox::warning(this, u8"成功", u8"文件接收成功！", u8"关闭");
-
-            break;
-        }
-
         case YmodemFileReceive::StatusAbort:
-        {
-            receiveButtonStatus = false;
-
-            ui->comButton->setEnabled(true);
-
-            ui->transmitBrowse->setEnabled(true);
-
-            if (ui->transmitPath->text().isEmpty() != true) {
-                ui->transmitButton->setEnabled(true);
-            }
-
-            ui->receiveBrowse->setEnabled(true);
-            ui->receiveButton->setText(u8"接收");
-
-            QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
-
-            break;
-        }
-
         case YmodemFileReceive::StatusTimeout:
-        {
-            receiveButtonStatus = false;
-
-            ui->comButton->setEnabled(true);
-
-            ui->transmitBrowse->setEnabled(true);
-
-            if (ui->transmitPath->text().isEmpty() != true) {
-                ui->transmitButton->setEnabled(true);
-            }
-
-            ui->receiveBrowse->setEnabled(true);
-            ui->receiveButton->setText(u8"接收");
-
-            QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
-
-            break;
-        }
-
         default:
         {
             receiveButtonStatus = false;
 
             ui->comButton->setEnabled(true);
 
-            ui->transmitBrowse->setEnabled(true);
+            // 启用所有路径项操作
+            for (const PathItem &item : pathItems) {
+                item.checkBox->setEnabled(true);
+                item.browseButton->setEnabled(true);
+            }
+            ui->addPathButton->setEnabled(true);
 
             if (ui->transmitPath->text().isEmpty() != true) {
                 ui->transmitButton->setEnabled(true);
@@ -412,7 +496,11 @@ void MainWindow::receiveStatus(YmodemFileReceive::Status status)
             ui->receiveBrowse->setEnabled(true);
             ui->receiveButton->setText(u8"接收");
 
-            QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
+            if (status == YmodemFileReceive::StatusFinish) {
+                QMessageBox::information(this, u8"成功", u8"文件接收成功！", u8"关闭");
+            } else {
+                QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
+            }
         }
     }
 }
@@ -626,7 +714,18 @@ void MainWindow::saveSettings()
     settings.setValue(QString("comFlashBaudrateApus"), ui->comboBox_flash_apus->currentText());
 
     // 保存下载文件路径
-    settings.setValue(QString("binPath"), ui->transmitPath->text());
+    settings.setValue(QString("binPath"), getSelectedFilePath());
+    
+    // 保存所有文件路径
+    QStringList pathList;
+    for (const PathItem &item : pathItems) {
+        QString path = item.lineEdit->text();
+        if (!path.isEmpty()) {
+            pathList << path;
+        }
+    }
+    settings.setValue(QString("binPathList"), pathList);
+    
     settings.setValue(QString("binPathApus"), ui->binPath_apus->text());
 }
 
@@ -667,8 +766,43 @@ void MainWindow::recoverSettings()
     ui->comBaudRate_apus->setCurrentText(settings.value(QString("comBaudrateApus")).toString());
     ui->comboBox_flash_apus->setCurrentText(settings.value(QString("comFlashBaudrateApus")).toString());
 
-    // 设置下载文件路径
-    ui->transmitPath->setText(settings.value(QString("binPath")).toString());
+    // 清空现有路径项
+    clearAllPathItems();
+    
+    // 恢复文件路径列表
+    QStringList pathList = settings.value(QString("binPathList")).toStringList();
+    
+    // 设置第一个路径项
+    if (!pathList.isEmpty() && !pathItems.isEmpty()) {
+        pathItems[0].lineEdit->setText(pathList.first());
+        pathList.removeFirst();
+    }
+    
+    // 添加剩余路径项
+    for (const QString &path : pathList) {
+        if (!path.isEmpty()) {
+            addPathItem(path);
+        }
+    }
+    
+    // 恢复选中状态
+    QString selectedPath = settings.value(QString("binPath")).toString();
+    bool found = false;
+    
+    for (int i = 0; i < pathItems.size(); ++i) {
+        if (pathItems[i].lineEdit->text() == selectedPath) {
+            pathItems[i].checkBox->setChecked(true);
+            found = true;
+            break;
+        }
+    }
+    
+    if (!found && !pathItems.isEmpty()) {
+        pathItems[0].checkBox->setChecked(true);
+    }
+    
+    updateTransmitPath();
+    
     ui->binPath_apus->setText(settings.value(QString("binPathApus")).toString());
 }
 
